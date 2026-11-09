@@ -1,0 +1,85 @@
+name: Check vipers
+
+# Runs on every pull request and push to main. Read-only: it uses no secrets
+# and never signs or publishes anything. Signing happens offline, by a
+# maintainer, after merge.
+#
+# 1. Ownership: a pull request may only touch vipers/<its author>/..., unless
+#    the author is a maintainer.
+# 2. Spelling: American spelling in vipers/ (the published pages read as one).
+# 3. The DRADIS save checks, via the `viper-registry check` command built from
+#    DRADIS main: the script compiles, reads only parameters it defines, sizes,
+#    layout, publisher id.
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Lowercase GitHub logins allowed to change any publisher's folder.
+  MAINTAINERS: "mbordash"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: contrib
+
+      - name: Ownership
+        if: github.event_name == 'pull_request'
+        working-directory: contrib
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          author=$(echo "$AUTHOR" | tr '[:upper:]' '[:lower:]')
+          if echo " $MAINTAINERS " | grep -q " $author "; then
+            echo "$author is a maintainer"; exit 0
+          fi
+          bad=$(git diff --name-only "$BASE"...HEAD | grep -v "^vipers/$author/" || true)
+          if [ -n "$bad" ]; then
+            echo "::error::A pull request from $author may only change vipers/$author/. Also changed:"
+            echo "$bad"
+            exit 1
+          fi
+
+      - name: Spelling
+        working-directory: contrib
+        run: |
+          if grep -rniEw 'favour[a-z]*|behaviour[a-z]*|colour[a-z]*|cancelled|cancelling|analyse[ds]?|optimis[a-z]*|licence[ds]?|honour[a-z]*|centre[sd]?|neighbour[a-z]*' vipers/; then
+            echo "::error::Use American spelling (favor, behavior, canceled, analyze, optimize, license)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          repository: mbordash/DRADIS
+          ref: main
+          path: dradis
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: dradis
+
+      - name: Build the checker
+        working-directory: dradis
+        run: |
+          cp src/config.balanced.rs.example src/config.rs
+          cargo build --no-default-features --features kalshi,registry-tool --bin viper-registry
+
+      - name: DRADIS save checks
+        run: |
+          dirs=$(find contrib/vipers -mindepth 2 -maxdepth 2 -type d | sort)
+          if [ -z "$dirs" ]; then echo "no vipers"; exit 0; fi
+          dradis/target/debug/viper-registry check $dirs

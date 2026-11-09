@@ -1,0 +1,5 @@
+# Every change needs a maintainer's review before it can merge. Add community
+# maintainers here (and to MAINTAINERS in .github/workflows/check.yml) as the
+# project grows; with branch protection requiring code-owner review, any one
+# listed owner can approve.
+* @mbordash
