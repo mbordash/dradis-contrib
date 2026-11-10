@@ -36,7 +36,13 @@ normal curve: a "99%" favorite loses more often than one time in a hundred.
 - **`hourly_vol`** (default 0.003 = 0.3%): the typical one-hour move as a
   fraction of the price. BTC is usually 0.2–0.5%; ETH and SOL run higher. Too
   low and the script is overconfident.
-- **`window_secs`** (default 600): how close to the close it may enter.
+- **`window_secs`** (default 600): how close to the close it may start
+  entering.
+- **`min_secs`** (default 120): when it stops entering. In the last minute
+  or two the feed says little about the settlement (Kalshi settles on an
+  average of the index over the final minute, and a small basis error
+  outweighs the move left), so the market's price is the better estimate
+  there. Keep it below `window_secs`.
 
 ## What to expect
 
@@ -52,6 +58,17 @@ Things to watch:
 - A wrong `basis` or `hourly_vol` makes it confident where it should not be.
 - Near the close, books are thin; the default size is 5 contracts.
 - It holds to settlement. There is no stop.
+- In early paper results, trades the model rated at least 0.8 did better
+  than near-strike ones, where one loss costs several wins. If yours look the
+  same, try a higher `min_fair`.
+
+## Changes
+
+- **1.0.1:** stops entering `min_secs` (default 120) before the close,
+  instead of 30 seconds. On paper, its worst late entry bought at 0.20 with
+  under a minute left because the model read the feed as a 0.66 favorite; the
+  market was right.
+- **1.0.0:** first version.
 
 ## Venues
 

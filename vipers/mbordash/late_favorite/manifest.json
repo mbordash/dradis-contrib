@@ -57,6 +57,13 @@
       "max": "0.99",
       "description": "Only buy a side rated at least this likely"
     },
+    "min_secs": {
+      "type": "int",
+      "default": 120,
+      "min": "30",
+      "max": "1800",
+      "description": "Stop entering this many seconds before the close; near the close the market knows more than the price feed."
+    },
     "window_secs": {
       "type": "int",
       "default": 600,

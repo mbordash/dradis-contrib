@@ -7,12 +7,19 @@
 // distance to the strike is measured from the feed minus that. `min_fair`
 // keeps it to real favorites rather than near-strike coin flips, and
 // `fair_cap` limits how sure it may be (BTC's tails are fat).
+//
+// It stops entering `min_secs` before the close. In the last minute or two the
+// feed says little about the settlement: Kalshi settles on an average of the
+// index over the final minute, so part of the outcome is already fixed, and a
+// small basis error outweighs the move left. There the market's price is the
+// better estimate, and a large disagreement with it is a warning, not an edge.
 fn entry(ctx) {
     if ctx.oracle == () || ctx.strike == () || ctx.secs_to_close == () {
         return #{ hold: "needs an oracle, a strike and a close time" };
     }
     let t = ctx.secs_to_close;
-    if t > ctx.params.window_secs || t < 30 { return #{ hold: `outside the last ${ctx.params.window_secs}s` }; }
+    if t > ctx.params.window_secs { return #{ hold: `more than ${ctx.params.window_secs}s to the close` }; }
+    if t < ctx.params.min_secs { return #{ hold: `less than ${ctx.params.min_secs}s to the close` }; }
 
     // The price in the settlement's terms, and its distance to the strike in
     // standard deviations over the time left. The typical one-hour move is a
